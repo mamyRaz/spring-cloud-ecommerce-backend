@@ -1,5 +1,6 @@
 package org.mamy.billingservice.openfeign;
 
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.mamy.billingservice.model.Customer;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.hateoas.PagedModel;
@@ -11,6 +12,11 @@ import org.springframework.web.bind.annotation.PathVariable;
  */
 @FeignClient(name = "customer-service")
 public interface CustomerRestClient {
+
+    @CircuitBreaker(
+            name = "customerServiceCB",
+            fallbackMethod = "getDefaultCustomer"
+    )
     @GetMapping("/customers/{id}")
     Customer findCustomerById(@PathVariable Long id);
 
@@ -38,5 +44,14 @@ public interface CustomerRestClient {
      * et c'est cette classe qui fait le mapping avec la classe Customer
      */
     @GetMapping("/customers")
+    @CircuitBreaker(name = "customerServiceCB", fallbackMethod = "getAllDefaultCustomers")
     PagedModel<Customer> findAllCustomers();
+
+    default Customer getDefaultCustomer(Long id, Exception exception) {
+        return new Customer(id, "Default Name", "default@gmail.com");
+    }
+
+    default PagedModel<Customer> getAllDefaultCustomers() {
+        return PagedModel.empty();
+    }
 }
